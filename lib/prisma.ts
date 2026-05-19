@@ -12,7 +12,7 @@ const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 // Debug line
-console.log("Prisma instance:", prisma);
-console.log("Prisma user model:", prisma.user);
+// console.log("Prisma instance:", prisma);
+// console.log("Prisma user model:", prisma.user);
 
 export default prisma;

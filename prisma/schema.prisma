@@ -11,10 +11,64 @@ datasource db {
 }
 
 model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+  sleepLogs     SleepLog[]
+  mealLogs      MealLog[]
+  focusSessions FocusSession[]
+}
+
+model RefreshToken {
   id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+}
+
+model SleepLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  intendedBed   DateTime
+  actualBed     DateTime
+  intendedWake  DateTime
+  actualWake    DateTime
+  quality       Int?     // 1-5 rating, optional
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model MealLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealType      String   // breakfast, lunch, dinner, snack
+  intendedTime  DateTime
+  actualTime    DateTime
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model FocusSession {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  intendedStart DateTime
+  actualStart   DateTime
+  intendedEnd   DateTime
+  actualEnd     DateTime
+  completed     Boolean  @default(false)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
