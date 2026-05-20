@@ -60,6 +60,20 @@ export default function MealsPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/meals/${id}`);
+    },
+    onSuccess: () => {
+      toast.success("Log deleted");
+      queryClient.invalidateQueries({ queryKey: ["meals"] });
+      queryClient.invalidateQueries({ queryKey: ["summary"] });
+    },
+    onError: () => {
+      toast.error("Failed to delete");
+    },
+  });
+
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
@@ -194,6 +208,17 @@ export default function MealsPage() {
                       {log.description}
                     </p>
                   )}
+                  <div className="pt-2 flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground hover:text-red-500"
+                      onClick={() => deleteMutation.mutate(log.id)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))

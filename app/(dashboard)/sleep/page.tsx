@@ -64,6 +64,20 @@ export default function SleepPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/sleep/${id}`);
+    },
+    onSuccess: () => {
+      toast.success("Log deleted");
+      queryClient.invalidateQueries({ queryKey: ["sleep"] });
+      queryClient.invalidateQueries({ queryKey: ["summary"] });
+    },
+    onError: () => {
+      toast.error("Failed to delete");
+    },
+  });
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
@@ -219,6 +233,17 @@ export default function SleepPage() {
                       {log.notes}
                     </p>
                   )}
+                  <div className="pt-2 flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground hover:text-red-500"
+                      onClick={() => deleteMutation.mutate(log.id)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))

@@ -67,6 +67,20 @@ export default function FocusPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/focus/${id}`);
+    },
+    onSuccess: () => {
+      toast.success("Session deleted");
+      queryClient.invalidateQueries({ queryKey: ["focus"] });
+      queryClient.invalidateQueries({ queryKey: ["summary"] });
+    },
+    onError: () => {
+      toast.error("Failed to delete");
+    },
+  });
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value =
       e.target.type === "checkbox" ? e.target.checked : e.target.value;
@@ -226,6 +240,17 @@ export default function FocusPage() {
                       {session.notes}
                     </p>
                   )}
+                  <div className="pt-2 flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground hover:text-red-500"
+                      onClick={() => deleteMutation.mutate(session.id)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))
