@@ -40,7 +40,10 @@ export async function POST(req: NextRequest) {
       { expiresIn: "15m" },
     );
 
-    return NextResponse.json({ accessToken }, { status: 200 });
+    return NextResponse.json(
+      { accessToken, userId: payload.userId },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("Refresh error:", error);
     return NextResponse.json(
