@@ -4,7 +4,8 @@ import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const token = req.cookies.get("refreshToken")?.value;
+    const body = await req.json().catch(() => ({}));
+    const token = req.cookies.get("refreshToken")?.value ?? body.refreshToken;
 
     if (!token) {
       return NextResponse.json({ error: "No refresh token" }, { status: 401 });
