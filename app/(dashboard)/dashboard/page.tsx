@@ -8,6 +8,14 @@ import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import dynamic from "next/dynamic";
+
+const SleepChart = dynamic(() => import("@/components/charts/SleepChart"), {
+  ssr: false,
+});
+const FocusChart = dynamic(() => import("@/components/charts/FocusChart"), {
+  ssr: false,
+});
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -109,6 +117,29 @@ export default function DashboardPage() {
                 sub="this week"
               />
             </div>
+
+            {/* Charts */}
+            {summary?.sleep?.logs?.length > 0 && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-base">Sleep Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SleepChart logs={summary.sleep.logs} />
+                </CardContent>
+              </Card>
+            )}
+
+            {summary?.focus?.sessions?.length > 0 && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-base">Focus Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FocusChart sessions={summary.focus.sessions} />
+                </CardContent>
+              </Card>
+            )}
 
             {/* Quick Actions */}
             <div className="grid grid-cols-3 gap-4">

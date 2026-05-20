@@ -1,9 +1,9 @@
 import Image from "next/image";
+import LoginPage from "./(auth)/login/page";
 export default function Home() {
   return (
     <main>
-      <h1>RiseOS</h1>
-      <p>Coming soon.</p>
+      <LoginPage />
     </main>
   );
 }
