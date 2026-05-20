@@ -9,6 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
+// remove the direct import
+// import MealChart from "@/components/charts/MealChart";
+
+// add dynamic import alongside SleepChart and FocusChart
+const MealChart = dynamic(() => import("@/components/charts/MealChart"), {
+  ssr: false,
+});
 
 const SleepChart = dynamic(() => import("@/components/charts/SleepChart"), {
   ssr: false,
@@ -32,6 +39,7 @@ export default function DashboardPage() {
     queryKey: ["summary"],
     queryFn: async () => {
       const res = await api.get("/summary");
+
       return res.data;
     },
     enabled: isAuthenticated,
@@ -140,6 +148,20 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             )}
+
+            {summary?.meals?.avgGapByType &&
+              Object.keys(summary.meals.avgGapByType).length > 0 && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      Meal Timing Gaps
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <MealChart data={summary.meals.avgGapByType} />
+                  </CardContent>
+                </Card>
+              )}
 
             {/* Quick Actions */}
             <div className="grid grid-cols-3 gap-4">
