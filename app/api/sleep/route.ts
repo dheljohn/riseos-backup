@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
         notes: notes ?? null,
       },
     });
+    console.log("Sleep log created:", log);
 
     return NextResponse.json(log, { status: 201 });
   } catch (error) {

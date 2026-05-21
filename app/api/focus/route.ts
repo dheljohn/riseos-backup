@@ -3,18 +3,6 @@ import prisma from "@/lib/prisma";
 import { getAuthPayload, unauthorized } from "@/lib/auth";
 import { calcFocusGaps } from "@/lib/gap";
 
-// export async function GET(req: NextRequest) {
-//   const auth = getAuthPayload(req);
-//   if (!auth) return unauthorized();
-
-//   const sessions = await prisma.focusSession.findMany({
-//     where: { userId: auth.userId },
-//     orderBy: { actualStart: "desc" },
-//   });
-
-//   return NextResponse.json(sessions);
-// }
-
 export async function GET(req: NextRequest) {
   const auth = getAuthPayload(req);
   if (!auth) return unauthorized();
@@ -41,8 +29,8 @@ export async function POST(req: NextRequest) {
       title,
       intendedStart,
       actualStart,
-      intendedEnd,
-      actualEnd,
+      intendedDurationMins,
+      actualDurationMins,
       completed,
       notes,
     } = await req.json();
@@ -51,13 +39,13 @@ export async function POST(req: NextRequest) {
       !title ||
       !intendedStart ||
       !actualStart ||
-      !intendedEnd ||
-      !actualEnd
+      intendedDurationMins == null ||
+      actualDurationMins == null
     ) {
       return NextResponse.json(
         {
           error:
-            "title, intendedStart, actualStart, intendedEnd, actualEnd are required",
+            "title, intendedStart, actualStart, intendedDurationMins, actualDurationMins are required",
         },
         { status: 400 },
       );
@@ -69,8 +57,8 @@ export async function POST(req: NextRequest) {
         title,
         intendedStart: new Date(intendedStart),
         actualStart: new Date(actualStart),
-        intendedEnd: new Date(intendedEnd),
-        actualEnd: new Date(actualEnd),
+        intendedDurationMins: Number(intendedDurationMins),
+        actualDurationMins: Number(actualDurationMins),
         completed: completed ?? false,
         notes: notes ?? null,
       },

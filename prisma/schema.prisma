@@ -59,16 +59,16 @@ model MealLog {
 }
 
 model FocusSession {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title         String
-  intendedStart DateTime
-  actualStart   DateTime
-  intendedEnd   DateTime
-  actualEnd     DateTime
-  completed     Boolean  @default(false)
-  notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title                String
+  intendedStart        DateTime
+  actualStart          DateTime
+  intendedDurationMins Int
+  actualDurationMins   Int
+  completed            Boolean  @default(false)
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }

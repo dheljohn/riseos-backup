@@ -49,17 +49,21 @@ export function calcMealGap(log: { intendedTime: Date; actualTime: Date }) {
 export function calcFocusGaps(log: {
   intendedStart: Date;
   actualStart: Date;
-  intendedEnd: Date;
-  actualEnd: Date;
+  intendedDurationMins: number;
+  actualDurationMins: number;
 }) {
   return {
     startGap: calcGap(log.intendedStart, log.actualStart),
-    endGap: calcGap(log.intendedEnd, log.actualEnd),
-    intendedDurationMins: Math.round(
-      (log.intendedEnd.getTime() - log.intendedStart.getTime()) / 60000,
-    ),
-    actualDurationMins: Math.round(
-      (log.actualEnd.getTime() - log.actualStart.getTime()) / 60000,
-    ),
+    durationGap: {
+      diffMinutes: log.actualDurationMins - log.intendedDurationMins,
+      diffLabel:
+        Math.abs(log.actualDurationMins - log.intendedDurationMins) < 5
+          ? "on time"
+          : log.actualDurationMins > log.intendedDurationMins
+            ? `${log.actualDurationMins - log.intendedDurationMins} min over`
+            : `${log.intendedDurationMins - log.actualDurationMins} min under`,
+    },
+    intendedDurationMins: log.intendedDurationMins,
+    actualDurationMins: log.actualDurationMins,
   };
 }

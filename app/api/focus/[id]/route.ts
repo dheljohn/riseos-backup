@@ -26,8 +26,12 @@ export async function PATCH(
           intendedStart: new Date(body.intendedStart),
         }),
         ...(body.actualStart && { actualStart: new Date(body.actualStart) }),
-        ...(body.intendedEnd && { intendedEnd: new Date(body.intendedEnd) }),
-        ...(body.actualEnd && { actualEnd: new Date(body.actualEnd) }),
+        ...(body.intendedDurationMins !== undefined && {
+          intendedDurationMins: Number(body.intendedDurationMins),
+        }),
+        ...(body.actualDurationMins !== undefined && {
+          actualDurationMins: Number(body.actualDurationMins),
+        }),
         ...(body.completed !== undefined && { completed: body.completed }),
         ...(body.notes !== undefined && { notes: body.notes }),
       },

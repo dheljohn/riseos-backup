@@ -20,8 +20,8 @@ export default function FocusPage() {
     title: "",
     intendedStart: "",
     actualStart: "",
-    intendedEnd: "",
-    actualEnd: "",
+    intendedDurationMins: "",
+    actualDurationMins: "",
     completed: true,
     notes: "",
   });
@@ -41,8 +41,8 @@ export default function FocusPage() {
         title: data.title,
         intendedStart: new Date(data.intendedStart).toISOString(),
         actualStart: new Date(data.actualStart).toISOString(),
-        intendedEnd: new Date(data.intendedEnd).toISOString(),
-        actualEnd: new Date(data.actualEnd).toISOString(),
+        intendedDurationMins: Number(data.intendedDurationMins),
+        actualDurationMins: Number(data.actualDurationMins),
         completed: data.completed,
         notes: data.notes || null,
       });
@@ -56,8 +56,8 @@ export default function FocusPage() {
         title: "",
         intendedStart: "",
         actualStart: "",
-        intendedEnd: "",
-        actualEnd: "",
+        intendedDurationMins: "",
+        actualDurationMins: "",
         completed: true,
         notes: "",
       });
@@ -92,8 +92,8 @@ export default function FocusPage() {
       !form.title ||
       !form.intendedStart ||
       !form.actualStart ||
-      !form.intendedEnd ||
-      !form.actualEnd
+      !form.intendedDurationMins ||
+      !form.actualDurationMins
     ) {
       toast.error("Please fill in all required fields");
       return;
@@ -147,20 +147,22 @@ export default function FocusPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Intended End</Label>
+                <Label>Intended Duration (mins)</Label>
                 <Input
-                  type="datetime-local"
-                  name="intendedEnd"
-                  value={form.intendedEnd}
+                  type="number"
+                  name="intendedDurationMins"
+                  placeholder="60"
+                  value={form.intendedDurationMins}
                   onChange={handleChange}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Actual End</Label>
+                <Label>Actual Duration (mins)</Label>
                 <Input
-                  type="datetime-local"
-                  name="actualEnd"
-                  value={form.actualEnd}
+                  type="number"
+                  name="actualDurationMins"
+                  placeholder="60"
+                  value={form.actualDurationMins}
                   onChange={handleChange}
                 />
               </div>
