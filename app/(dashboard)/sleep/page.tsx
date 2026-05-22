@@ -5,96 +5,115 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/store";
 import { api } from "@/lib/api";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { toast } from "sonner";
+
+const ENERGY_OPTIONS = [
+  { value: 1, emoji: "😴", label: "Exhausted" },
+  { value: 2, emoji: "😕", label: "Low" },
+  { value: 3, emoji: "😐", label: "Okay" },
+  { value: 4, emoji: "🙂", label: "Good" },
+  { value: 5, emoji: "🔥", label: "Energized" },
+];
 
 export default function SleepPage() {
   const router = useRouter();
+
   const { isAuthenticated } = useAuthStore();
+
   const queryClient = useQueryClient();
 
-  const [form, setForm] = useState({
-    intendedBed: "",
-    actualBed: "",
-    intendedWake: "",
-    actualWake: "",
-    quality: "",
-    notes: "",
-  });
+  const [durationHrs, setDurationHrs] = useState(8);
+
+  const [energyLevel, setEnergyLevel] = useState(3);
+
+  // =========================
+  // Fetch Logs
+  // =========================
 
   const { data: logs, isLoading } = useQuery({
     queryKey: ["sleep"],
+
     queryFn: async () => {
       const res = await api.get("/sleep");
       return res.data;
     },
+
     enabled: isAuthenticated,
   });
 
+  // =========================
+  // Save Sleep Log
+  // =========================
+
   const mutation = useMutation({
-    mutationFn: async (data: typeof form) => {
+    mutationFn: async () => {
       const res = await api.post("/sleep", {
-        intendedBed: new Date(data.intendedBed).toISOString(),
-        actualBed: new Date(data.actualBed).toISOString(),
-        intendedWake: new Date(data.intendedWake).toISOString(),
-        actualWake: new Date(data.actualWake).toISOString(),
-        quality: data.quality ? parseInt(data.quality) : null,
-        notes: data.notes || null,
+        durationHrs,
+        energyLevel,
       });
+
       return res.data;
     },
 
     onSuccess: () => {
       toast.success("Sleep log saved!");
-      queryClient.invalidateQueries({ queryKey: ["sleep"] });
-      queryClient.invalidateQueries({ queryKey: ["summary"] });
-      setForm({
-        intendedBed: "",
-        actualBed: "",
-        intendedWake: "",
-        actualWake: "",
-        quality: "",
-        notes: "",
+
+      queryClient.invalidateQueries({
+        queryKey: ["sleep"],
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["summary"],
+      });
+
+      setDurationHrs(8);
+      setEnergyLevel(3);
     },
+
     onError: (err: any) => {
-      toast.error(err.response?.data?.error ?? "Failed to save");
+      toast.error(err.response?.data?.error ?? "Failed to save sleep log");
     },
   });
+
+  // =========================
+  // Delete Log
+  // =========================
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/sleep/${id}`);
     },
+
     onSuccess: () => {
-      toast.success("Log deleted");
-      queryClient.invalidateQueries({ queryKey: ["sleep"] });
-      queryClient.invalidateQueries({ queryKey: ["summary"] });
+      toast.success("Sleep log deleted");
+
+      queryClient.invalidateQueries({
+        queryKey: ["sleep"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["summary"],
+      });
     },
+
     onError: () => {
-      toast.error("Failed to delete");
+      toast.error("Failed to delete log");
     },
   });
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  }
+  // =========================
+  // Helpers
+  // =========================
 
-  function handleSubmit() {
-    if (
-      !form.intendedBed ||
-      !form.actualBed ||
-      !form.intendedWake ||
-      !form.actualWake
-    ) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-    mutation.mutate(form);
-  }
+  const selectedEnergy = ENERGY_OPTIONS.find((e) => e.value === energyLevel);
+
+  // =========================
+  // UI
+  // =========================
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
@@ -104,77 +123,72 @@ export default function SleepPage() {
           <Button variant="ghost" onClick={() => router.push("/dashboard")}>
             ← Back
           </Button>
-          <h1 className="text-xl font-bold">Sleep Log</h1>
+
+          <h1 className="text-xl font-bold">Sleep Tracker</h1>
         </div>
 
-        {/* Form */}
+        {/* Sleep Logger */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-base">Log a Sleep Entry</CardTitle>
+            <CardTitle>How was your sleep?</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Intended Bedtime</Label>
-                <Input
-                  type="datetime-local"
-                  name="intendedBed"
-                  value={form.intendedBed}
-                  onChange={handleChange}
-                />
+
+          <CardContent className="space-y-8">
+            {/* Sleep Duration */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Sleep Duration</span>
+
+                <span className="text-2xl font-bold">{durationHrs}h</span>
               </div>
-              <div className="space-y-2">
-                <Label>Actual Bedtime</Label>
-                <Input
-                  type="datetime-local"
-                  name="actualBed"
-                  value={form.actualBed}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Intended Wake</Label>
-                <Input
-                  type="datetime-local"
-                  name="intendedWake"
-                  value={form.intendedWake}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Actual Wake</Label>
-                <Input
-                  type="datetime-local"
-                  name="actualWake"
-                  value={form.actualWake}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Sleep Quality (1-5)</Label>
-              <Input
-                type="number"
-                name="quality"
+
+              <input
+                title="Sleep Duration"
+                type="range"
                 min={1}
-                max={5}
-                placeholder="Optional"
-                value={form.quality}
-                onChange={handleChange}
+                max={12}
+                step={0.5}
+                value={durationHrs}
+                onChange={(e) => setDurationHrs(Number(e.target.value))}
+                className="w-full"
               />
+
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1h</span>
+                <span>12h</span>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Input
-                name="notes"
-                placeholder="Optional"
-                value={form.notes}
-                onChange={handleChange}
-              />
+
+            {/* Energy Level */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Energy Level</span>
+
+                <span className="text-sm text-muted-foreground">
+                  {selectedEnergy?.label}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-5 gap-2">
+                {ENERGY_OPTIONS.map((energy) => (
+                  <Button
+                    key={energy.value}
+                    variant={
+                      energyLevel === energy.value ? "default" : "outline"
+                    }
+                    className="h-16 text-2xl"
+                    onClick={() => setEnergyLevel(energy.value)}
+                  >
+                    {energy.emoji}
+                  </Button>
+                ))}
+              </div>
             </div>
+
+            {/* Save Button */}
             <Button
-              className="w-full"
-              onClick={handleSubmit}
+              className="w-full h-12 text-base"
+              onClick={() => mutation.mutate()}
               disabled={mutation.isPending}
             >
               {mutation.isPending ? "Saving..." : "Save Sleep Log"}
@@ -182,72 +196,77 @@ export default function SleepPage() {
           </CardContent>
         </Card>
 
-        {/* Logs List */}
+        {/* Logs */}
         <div className="space-y-4">
-          <h2 className="font-semibold">Previous Logs</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Previous Logs</h2>
+
+            {logs?.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                {logs.length} logs
+              </span>
+            )}
+          </div>
+
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading...</p>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           ) : logs?.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No sleep logs yet.</p>
+            <p className="text-sm text-muted-foreground">No sleep logs yet.</p>
           ) : (
-            logs?.map((log: any) => (
-              <Card key={log.id}>
-                <CardContent className="pt-4 space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Bedtime gap</span>
-                    <span
-                      className={
-                        log.gaps.bedGap.diffMinutes > 0
-                          ? "text-red-500"
-                          : "text-green-500"
-                      }
-                    >
-                      {log.gaps.bedGap.diffLabel}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Wake gap</span>
-                    <span
-                      className={
-                        log.gaps.wakeGap.diffMinutes > 0
-                          ? "text-red-500"
-                          : "text-green-500"
-                      }
-                    >
-                      {log.gaps.wakeGap.diffLabel}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Duration</span>
-                    <span>
-                      {(log.gaps.actualDurationMins / 60).toFixed(1)}h
-                    </span>
-                  </div>
-                  {log.quality && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Quality</span>
-                      <span>{"⭐".repeat(log.quality)}</span>
+            logs?.map((log: any) => {
+              const energy = ENERGY_OPTIONS.find(
+                (e) => e.value === log.energyLevel,
+              );
+
+              return (
+                <Card key={log.id}>
+                  <CardContent className="pt-5">
+                    <div className="flex justify-between items-start">
+                      {/* Left */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl">{energy?.emoji}</span>
+
+                          <div>
+                            <p className="font-semibold">
+                              {log.durationHrs}h sleep
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              {energy?.label}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(log.createdAt).toLocaleDateString([], {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}{" "}
+                          •{" "}
+                          {new Date(log.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+
+                      {/* Delete */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-muted-foreground hover:text-red-500"
+                        onClick={() => deleteMutation.mutate(log.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        Delete
+                      </Button>
                     </div>
-                  )}
-                  {log.notes && (
-                    <p className="text-xs text-muted-foreground pt-1">
-                      {log.notes}
-                    </p>
-                  )}
-                  <div className="pt-2 flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-muted-foreground hover:text-red-500"
-                      onClick={() => deleteMutation.mutate(log.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      {deleteMutation.isPending ? "Deleting..." : "Delete"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       </div>

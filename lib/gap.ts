@@ -22,30 +22,6 @@ export function calcGap(intended: Date, actual: Date): GapResult {
   return { intendedMinutes, actualMinutes, diffMinutes, diffLabel };
 }
 
-export function calcSleepGaps(log: {
-  intendedBed: Date;
-  actualBed: Date;
-  intendedWake: Date;
-  actualWake: Date;
-}) {
-  return {
-    bedGap: calcGap(log.intendedBed, log.actualBed),
-    wakeGap: calcGap(log.intendedWake, log.actualWake),
-    intendedDurationMins: Math.round(
-      (log.intendedWake.getTime() - log.intendedBed.getTime()) / 60000,
-    ),
-    actualDurationMins: Math.round(
-      (log.actualWake.getTime() - log.actualBed.getTime()) / 60000,
-    ),
-  };
-}
-
-export function calcMealGap(log: { intendedTime: Date; actualTime: Date }) {
-  return {
-    timeGap: calcGap(log.intendedTime, log.actualTime),
-  };
-}
-
 export function calcFocusGaps(log: {
   intendedStart: Date;
   actualStart: Date;

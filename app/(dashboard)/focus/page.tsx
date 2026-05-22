@@ -1,30 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+
+const PRESETS = [25, 60, 90];
+type TimerState = "idle" | "running" | "paused";
 
 export default function FocusPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
   const queryClient = useQueryClient();
+  const savedRef = useRef(false);
 
-  const [form, setForm] = useState({
-    title: "",
-    intendedStart: "",
-    actualStart: "",
-    intendedDurationMins: "",
-    actualDurationMins: "",
-    completed: true,
-    notes: "",
-  });
+  const [focusLabel, setFocusLabel] = useState("");
+  const [selectedMins, setSelectedMins] = useState(25);
+  const [customInput, setCustomInput] = useState("25");
+  const [secondsLeft, setSecondsLeft] = useState(25 * 60);
+  const [timerState, setTimerState] = useState<TimerState>("idle");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startMinsRef = useRef(25);
 
   const { data: sessions, isLoading } = useQuery({
     queryKey: ["focus"],
@@ -35,32 +36,19 @@ export default function FocusPage() {
     enabled: isAuthenticated,
   });
 
-  const mutation = useMutation({
-    mutationFn: async (data: typeof form) => {
-      const res = await api.post("/focus", {
-        title: data.title,
-        intendedStart: new Date(data.intendedStart).toISOString(),
-        actualStart: new Date(data.actualStart).toISOString(),
-        intendedDurationMins: Number(data.intendedDurationMins),
-        actualDurationMins: Number(data.actualDurationMins),
-        completed: data.completed,
-        notes: data.notes || null,
-      });
+  const saveMutation = useMutation({
+    mutationFn: async (data: {
+      label: string;
+      durationMins: number;
+      completed: boolean;
+    }) => {
+      const res = await api.post("/focus", data);
       return res.data;
     },
     onSuccess: () => {
       toast.success("Focus session saved!");
       queryClient.invalidateQueries({ queryKey: ["focus"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
-      setForm({
-        title: "",
-        intendedStart: "",
-        actualStart: "",
-        intendedDurationMins: "",
-        actualDurationMins: "",
-        completed: true,
-        notes: "",
-      });
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.error ?? "Failed to save");
@@ -76,173 +64,248 @@ export default function FocusPage() {
       queryClient.invalidateQueries({ queryKey: ["focus"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
     },
-    onError: () => {
-      toast.error("Failed to delete");
-    },
+    onError: () => toast.error("Failed to delete"),
   });
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const value =
-      e.target.type === "checkbox" ? e.target.checked : e.target.value;
-    setForm((prev) => ({ ...prev, [e.target.name]: value }));
+  // Countdown tick
+  useEffect(() => {
+    if (timerState === "running") {
+      intervalRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(intervalRef.current!);
+            setTimerState("idle");
+            if (!savedRef.current) {
+              // ← only save once
+              savedRef.current = true;
+              saveMutation.mutate({
+                label: focusLabel.trim() || "Focus Session",
+                durationMins: startMinsRef.current,
+                completed: true,
+              });
+              toast.success("Focus session complete! 🎉");
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [timerState]);
+
+  function applyMins(mins: number) {
+    if (timerState !== "idle") return;
+    setSelectedMins(mins);
+    setCustomInput(String(mins));
+    setSecondsLeft(mins * 60);
+    startMinsRef.current = mins;
   }
 
-  function handleSubmit() {
-    if (
-      !form.title ||
-      !form.intendedStart ||
-      !form.actualStart ||
-      !form.intendedDurationMins ||
-      !form.actualDurationMins
-    ) {
-      toast.error("Please fill in all required fields");
-      return;
+  function handleCustomInput(val: string) {
+    setCustomInput(val);
+    const parsed = parseInt(val);
+    if (!isNaN(parsed) && parsed > 0 && timerState === "idle") {
+      setSelectedMins(parsed);
+      setSecondsLeft(parsed * 60);
+      startMinsRef.current = parsed;
     }
-    mutation.mutate(form);
   }
+
+  function handleStartPauseContinue() {
+    if (timerState === "idle") {
+      if (secondsLeft === 0) {
+        setSecondsLeft(startMinsRef.current * 60);
+      }
+      savedRef.current = false;
+      setTimerState("running");
+    } else if (timerState === "running") {
+      setTimerState("paused");
+    } else if (timerState === "paused") {
+      setTimerState("running");
+    }
+  }
+
+  function handleReset() {
+    setTimerState("idle");
+    setSecondsLeft(startMinsRef.current * 60);
+  }
+
+  function handleAbandon() {
+    if (timerState === "idle" && secondsLeft === 0) return;
+    const elapsed = startMinsRef.current - Math.ceil(secondsLeft / 60);
+    if (elapsed >= 1) {
+      saveMutation.mutate({
+        label: focusLabel.trim() || "Focus Session",
+        durationMins: elapsed,
+        completed: false,
+      });
+    }
+    handleReset();
+  }
+
+  const totalSeconds = startMinsRef.current * 60;
+  const progress = totalSeconds > 0 ? (secondsLeft / totalSeconds) * 100 : 100;
+  const mins = Math.floor(secondsLeft / 60)
+    .toString()
+    .padStart(2, "0");
+  const secs = (secondsLeft % 60).toString().padStart(2, "0");
+
+  const circumference = 2 * Math.PI * 90;
+  const strokeDashoffset = circumference * (1 - progress / 100);
+
+  const startBtnLabel =
+    timerState === "idle"
+      ? "Start"
+      : timerState === "running"
+        ? "Pause"
+        : "Continue";
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Button variant="ghost" onClick={() => router.push("/dashboard")}>
             ← Back
           </Button>
-          <h1 className="text-xl font-bold">Focus Log</h1>
+          <h1 className="text-xl font-bold">Focus</h1>
         </div>
 
-        {/* Form */}
-        <Card className="mb-8">
+        {/* Focus Label Card */}
+        <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-base">Log a Focus Session</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground font-medium">
+              What are you focusing on?
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Session Title</Label>
-              <Input
-                name="title"
-                placeholder="e.g. Deep work on RiseOS"
-                value={form.title}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Intended Start</Label>
-                <Input
-                  type="datetime-local"
-                  name="intendedStart"
-                  value={form.intendedStart}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Actual Start</Label>
-                <Input
-                  type="datetime-local"
-                  name="actualStart"
-                  value={form.actualStart}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Intended Duration (mins)</Label>
-                <Input
-                  type="number"
-                  name="intendedDurationMins"
-                  placeholder="60"
-                  value={form.intendedDurationMins}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Actual Duration (mins)</Label>
-                <Input
-                  type="number"
-                  name="actualDurationMins"
-                  placeholder="60"
-                  value={form.actualDurationMins}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                title="Focus"
-                type="checkbox"
-                id="completed"
-                name="completed"
-                checked={form.completed}
-                onChange={handleChange}
-                className="w-4 h-4"
-              />
-              <Label htmlFor="completed">Session completed</Label>
-            </div>
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Input
-                name="notes"
-                placeholder="Optional"
-                value={form.notes}
-                onChange={handleChange}
-              />
-            </div>
-            <Button
-              className="w-full"
-              onClick={handleSubmit}
-              disabled={mutation.isPending}
-            >
-              {mutation.isPending ? "Saving..." : "Save Focus Session"}
-            </Button>
+          <CardContent>
+            <Input
+              placeholder="e.g. Coding, Reading, Deep Work..."
+              value={focusLabel}
+              onChange={(e) => setFocusLabel(e.target.value)}
+              disabled={timerState !== "idle"}
+              className="text-base"
+            />
           </CardContent>
         </Card>
 
-        {/* Sessions List */}
-        <div className="space-y-4">
-          <h2 className="font-semibold">Previous Sessions</h2>
+        {/* Timer Card */}
+        <Card className="mb-6">
+          <CardContent className="pt-6 flex flex-col items-center gap-6">
+            {/* Circle Timer */}
+            <div className="relative flex items-center justify-center">
+              <svg width="220" height="220" className="-rotate-90">
+                <circle
+                  cx="110"
+                  cy="110"
+                  r="90"
+                  fill="none"
+                  stroke="hsl(var(--muted))"
+                  strokeWidth="10"
+                />
+                <circle
+                  cx="110"
+                  cy="110"
+                  r="90"
+                  fill="none"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  style={{ transition: "stroke-dashoffset 1s linear" }}
+                />
+              </svg>
+              <div className="absolute flex flex-col items-center">
+                <span className="text-4xl font-mono font-bold">
+                  {mins}:{secs}
+                </span>
+                {focusLabel && (
+                  <span className="text-xs text-muted-foreground mt-1 max-w-[120px] text-center truncate">
+                    {focusLabel}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Preset Buttons */}
+            <div className="flex gap-2">
+              {PRESETS.map((p) => (
+                <Button
+                  key={p}
+                  variant={selectedMins === p ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => applyMins(p)}
+                  disabled={timerState !== "idle"}
+                >
+                  {p} min
+                </Button>
+              ))}
+            </div>
+
+            {/* Custom Input */}
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                value={customInput}
+                onChange={(e) => handleCustomInput(e.target.value)}
+                disabled={timerState !== "idle"}
+                className="w-20 text-center"
+                min={1}
+              />
+              <span className="text-sm text-muted-foreground">min</span>
+            </div>
+
+            {/* Controls */}
+            <div className="flex gap-3 w-full">
+              <Button className="flex-1" onClick={handleStartPauseContinue}>
+                {startBtnLabel}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={timerState !== "idle" ? handleAbandon : handleReset}
+              >
+                {timerState !== "idle" ? "Abandon" : "Reset"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sessions Log */}
+        <div className="space-y-3">
+          <h2 className="font-semibold text-sm">Today's Sessions</h2>
           {isLoading ? (
             <p className="text-muted-foreground text-sm">Loading...</p>
           ) : sessions?.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              No focus sessions yet.
+              No sessions yet today.
             </p>
           ) : (
             sessions?.map((session: any) => (
               <Card key={session.id}>
-                <CardContent className="pt-4 space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">{session.title}</span>
-                    <span>{session.completed ? "✅" : "❌"}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Start gap</span>
-                    <span
-                      className={
-                        session.gaps.startGap.diffMinutes > 0
-                          ? "text-red-500"
-                          : "text-green-500"
-                      }
-                    >
-                      {session.gaps.startGap.diffLabel}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Duration</span>
-                    <span>
-                      {(session.gaps.actualDurationMins / 60).toFixed(1)}h
-                      {session.gaps.actualDurationMins >
-                      session.gaps.intendedDurationMins
-                        ? ` (${session.gaps.actualDurationMins - session.gaps.intendedDurationMins} min over)`
-                        : ""}
-                    </span>
-                  </div>
-                  {session.notes && (
-                    <p className="text-xs text-muted-foreground pt-1">
-                      {session.notes}
-                    </p>
-                  )}
-                  <div className="pt-2 flex justify-end">
+                <CardContent className="pt-4">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">
+                          {session.label}
+                        </span>
+                        <span>{session.completed ? "✅" : "❌"}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {session.durationMins} min ·{" "}
+                        {new Date(session.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -250,7 +313,7 @@ export default function FocusPage() {
                       onClick={() => deleteMutation.mutate(session.id)}
                       disabled={deleteMutation.isPending}
                     >
-                      {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                      Delete
                     </Button>
                   </div>
                 </CardContent>

@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthPayload, unauthorized } from "@/lib/auth";
-import { calcSleepGaps, calcMealGap, calcFocusGaps } from "@/lib/gap";
 
 export async function GET(req: NextRequest) {
   const auth = getAuthPayload(req);
   if (!auth) return unauthorized();
 
   try {
-    // Get the start of the current week (Monday)
+    // Start of current week (Monday)
     const now = new Date();
+
     const dayOfWeek = now.getDay();
     const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
     const weekStart = new Date(now);
     weekStart.setDate(now.getDate() - daysToMonday);
     weekStart.setHours(0, 0, 0, 0);
@@ -19,161 +20,223 @@ export async function GET(req: NextRequest) {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 7);
 
-    // Fetch all logs for this week
+    // Fetch all logs
     const [sleepLogs, mealLogs, focusSessions] = await Promise.all([
       prisma.sleepLog.findMany({
         where: {
           userId: auth.userId,
-          createdAt: { gte: weekStart, lt: weekEnd },
+          createdAt: {
+            gte: weekStart,
+            lt: weekEnd,
+          },
         },
-        orderBy: { actualBed: "asc" },
+        orderBy: {
+          createdAt: "asc",
+        },
       }),
+
       prisma.mealLog.findMany({
         where: {
           userId: auth.userId,
-          createdAt: { gte: weekStart, lt: weekEnd },
+          createdAt: {
+            gte: weekStart,
+            lt: weekEnd,
+          },
         },
-        orderBy: { actualTime: "asc" },
+        orderBy: {
+          createdAt: "asc",
+        },
       }),
+
       prisma.focusSession.findMany({
         where: {
           userId: auth.userId,
-          createdAt: { gte: weekStart, lt: weekEnd },
+          createdAt: {
+            gte: weekStart,
+            lt: weekEnd,
+          },
         },
-        orderBy: { actualStart: "asc" },
+        orderBy: {
+          createdAt: "asc",
+        },
       }),
     ]);
 
-    // --- Sleep summary ---
-    const sleepWithGaps = sleepLogs.map((log) => ({
-      ...log,
-      gaps: calcSleepGaps(log),
-    }));
+    // =========================
+    // Sleep Summary
+    // =========================
 
-    const avgBedGap = average(
-      sleepWithGaps.map((l) => l.gaps.bedGap.diffMinutes),
-    );
-    const avgWakeGap = average(
-      sleepWithGaps.map((l) => l.gaps.wakeGap.diffMinutes),
-    );
-    const avgSleepDuration = average(
-      sleepWithGaps.map((l) => l.gaps.actualDurationMins),
-    );
-    const avgIntendedSleepDuration = average(
-      sleepWithGaps.map((l) => l.gaps.intendedDurationMins),
+    const avgSleepHours = average(sleepLogs.map((log) => log.durationHrs));
+
+    const avgEnergyLevel = average(sleepLogs.map((log) => log.energyLevel));
+
+    // =========================
+    // Meal Summary
+    // =========================
+
+    const totalCalories = mealLogs.reduce(
+      (sum, meal) => sum + (meal.calories ?? 0),
+      0,
     );
 
-    // --- Meal summary ---
-    const mealWithGaps = mealLogs.map((log) => ({
-      ...log,
-      gaps: calcMealGap(log),
-    }));
-
-    const mealsByType = mealWithGaps.reduce(
-      (acc, log) => {
-        if (!acc[log.mealType]) acc[log.mealType] = [];
-        acc[log.mealType].push(log.gaps.timeGap.diffMinutes);
-        return acc;
-      },
-      {} as Record<string, number[]>,
-    );
-
-    const avgMealGapByType = Object.entries(mealsByType).reduce(
-      (acc, [type, diffs]) => {
-        acc[type] = Math.round(average(diffs));
+    const mealsByType = mealLogs.reduce(
+      (acc, meal) => {
+        acc[meal.mealType] = (acc[meal.mealType] || 0) + 1;
         return acc;
       },
       {} as Record<string, number>,
     );
 
-    // --- Focus summary ---
-    const focusWithGaps = focusSessions.map((session) => ({
-      ...session,
-      gaps: calcFocusGaps(session),
-    }));
+    // =========================
+    // Focus Summary
+    // =========================
 
-    const completedSessions = focusWithGaps.filter((s) => s.completed).length;
-    const avgStartGap = average(
-      focusWithGaps.map((s) => s.gaps.startGap.diffMinutes),
-    );
-    const avgDurationOverrun = average(
-      focusWithGaps.map(
-        (s) => s.gaps.actualDurationMins - s.gaps.intendedDurationMins,
-      ),
-    );
-    const totalFocusMinutes = focusWithGaps.reduce(
-      (sum, s) => sum + s.gaps.actualDurationMins,
+    const completedSessions = focusSessions.filter((s) => s.completed).length;
+
+    const totalFocusMinutes = focusSessions.reduce(
+      (sum, s) => sum + s.durationMins,
       0,
     );
 
-    // --- Patterns ---
+    const avgSessionDuration = average(
+      focusSessions.map((s) => s.durationMins),
+    );
+
+    const longestSession =
+      focusSessions.length > 0
+        ? Math.max(...focusSessions.map((s) => s.durationMins))
+        : 0;
+
+    const completionRate =
+      focusSessions.length > 0
+        ? (completedSessions / focusSessions.length) * 100
+        : 0;
+
+    // =========================
+    // Patterns / Insights
+    // =========================
+
     const patterns: string[] = [];
 
-    if (avgBedGap > 30)
+    // Sleep insights
+    if (avgSleepHours < 6) {
       patterns.push(
-        `You went to bed an average of ${Math.round(avgBedGap)} min late this week.`,
+        `You averaged only ${avgSleepHours.toFixed(1)}h of sleep this week.`,
       );
-    if (avgBedGap < -10)
+    }
+
+    if (avgSleepHours >= 7) {
       patterns.push(
-        `You went to bed an average of ${Math.round(Math.abs(avgBedGap))} min early this week.`,
+        `You averaged ${avgSleepHours.toFixed(1)}h of sleep this week.`,
       );
-    if (avgSleepDuration < 420)
+    }
+
+    if (avgEnergyLevel >= 4) {
+      patterns.push(`Your average energy level was high this week.`);
+    }
+
+    if (avgEnergyLevel <= 2 && sleepLogs.length > 0) {
+      patterns.push(`Your energy levels were consistently low this week.`);
+    }
+
+    // Meal insights
+    if (mealLogs.length >= 21) {
+      patterns.push(`You logged meals consistently throughout the week.`);
+    }
+
+    if (totalCalories > 14000) {
       patterns.push(
-        `You averaged ${Math.round((avgSleepDuration / 60) * 10) / 10}h of sleep — below the recommended 7h.`,
+        `Your total logged calorie intake was ${totalCalories} kcal this week.`,
       );
-    if (avgSleepDuration >= 420)
-      patterns.push(
-        `You averaged ${Math.round((avgSleepDuration / 60) * 10) / 10}h of sleep this week.`,
-      );
-    if (avgStartGap > 20)
-      patterns.push(
-        `Your focus sessions started an average of ${Math.round(avgStartGap)} min late.`,
-      );
-    if (avgDurationOverrun > 15)
-      patterns.push(
-        `Your focus sessions ran ${Math.round(avgDurationOverrun)} min over on average.`,
-      );
-    if (completedSessions === focusSessions.length && focusSessions.length > 0)
+    }
+
+    // Focus insights
+    if (completionRate === 100 && focusSessions.length > 0) {
       patterns.push(
         `You completed all ${completedSessions} focus sessions this week.`,
       );
+    }
+
+    if (completionRate >= 70 && completionRate < 100) {
+      patterns.push(
+        `You completed ${Math.round(completionRate)}% of your focus sessions.`,
+      );
+    }
+
+    if (completionRate < 50 && focusSessions.length > 0) {
+      patterns.push(`Less than half of your focus sessions were completed.`);
+    }
+
+    if (avgSessionDuration >= 60) {
+      patterns.push(
+        `Your average focus session lasted ${Math.round(avgSessionDuration)} minutes.`,
+      );
+    }
+
+    if (longestSession >= 120) {
+      patterns.push(
+        `Your longest focus session lasted ${longestSession} minutes.`,
+      );
+    }
 
     return NextResponse.json({
       weekStart: weekStart.toISOString(),
       weekEnd: weekEnd.toISOString(),
+
       sleep: {
         totalLogs: sleepLogs.length,
-        avgBedGapMins: Math.round(avgBedGap),
-        avgWakeGapMins: Math.round(avgWakeGap),
-        avgActualDurationMins: Math.round(avgSleepDuration),
-        avgIntendedDurationMins: Math.round(avgIntendedSleepDuration),
-        logs: sleepWithGaps,
+
+        avgSleepHours: Number(avgSleepHours.toFixed(1)),
+
+        avgEnergyLevel: Number(avgEnergyLevel.toFixed(1)),
+
+        logs: sleepLogs,
       },
+
       meals: {
         totalLogs: mealLogs.length,
-        avgGapByType: avgMealGapByType,
-        logs: mealWithGaps,
+
+        totalCalories,
+
+        mealsByType,
+
+        logs: mealLogs,
       },
+
       focus: {
         totalSessions: focusSessions.length,
+
         completedSessions,
+
+        completionRate: Math.round(completionRate),
+
         totalFocusMinutes,
-        avgStartGapMins: Math.round(avgStartGap),
-        avgDurationOverrunMins: Math.round(avgDurationOverrun),
-        sessions: focusWithGaps,
+
+        avgSessionDurationMins: Math.round(avgSessionDuration),
+
+        longestSessionMins: longestSession,
+
+        sessions: focusSessions,
       },
+
       patterns,
     });
   } catch (error) {
     console.error("Summary error:", error);
+
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
+      {
+        error: "Internal server error",
+      },
+      {
+        status: 500,
+      },
     );
   }
 }
 
 function average(nums: number[]): number {
   if (nums.length === 0) return 0;
+
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 }

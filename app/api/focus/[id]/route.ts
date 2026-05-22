@@ -21,19 +21,11 @@ export async function PATCH(
     const updated = await prisma.focusSession.update({
       where: { id },
       data: {
-        ...(body.title && { title: body.title }),
-        ...(body.intendedStart && {
-          intendedStart: new Date(body.intendedStart),
-        }),
-        ...(body.actualStart && { actualStart: new Date(body.actualStart) }),
-        ...(body.intendedDurationMins !== undefined && {
-          intendedDurationMins: Number(body.intendedDurationMins),
-        }),
-        ...(body.actualDurationMins !== undefined && {
-          actualDurationMins: Number(body.actualDurationMins),
+        ...(body.label && { label: body.label }),
+        ...(body.durationMins !== undefined && {
+          durationMins: Number(body.durationMins),
         }),
         ...(body.completed !== undefined && { completed: body.completed }),
-        ...(body.notes !== undefined && { notes: body.notes }),
       },
     });
 
