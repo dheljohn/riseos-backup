@@ -62,9 +62,28 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
     // =========================
     // Sleep Summary
     // =========================
+    const todayLog = sleepLogs.find(
+      (log) => log.createdAt.toDateString() === now.toDateString(),
+    );
+    const todaySleepLog = sleepLogs.filter((log) => {
+      const logTime = log.createdAt.getTime();
+      return logTime >= todayStart.getTime() && logTime <= todayEnd.getTime();
+    });
+    console.log("todaySleepLog", todaySleepLog);
+
+    const todaySleepDur =
+      todaySleepLog.reduce((sum, log) => sum + log.durationHrs, 0) ?? 0;
+
+    const todayEnergy =
+      todaySleepLog.reduce((sum, log) => sum + log.energyLevel, 0) ?? 0;
 
     const avgSleepHours = average(sleepLogs.map((log) => log.durationHrs));
 
@@ -79,6 +98,18 @@ export async function GET(req: NextRequest) {
       0,
     );
 
+    const todayMeals = mealLogs.filter((log) => {
+      const logTime = log.createdAt.getTime();
+      return logTime >= todayStart.getTime() && logTime <= todayEnd.getTime();
+    });
+
+    const todayCalories = mealLogs
+      .filter((log) => {
+        const logTime = log.createdAt.getTime();
+        return logTime >= todayStart.getTime() && logTime <= todayEnd.getTime();
+      })
+      .reduce((sum, meal) => sum + (meal.calories ?? 0), 0);
+
     const mealsByType = mealLogs.reduce(
       (acc, meal) => {
         acc[meal.mealType] = (acc[meal.mealType] || 0) + 1;
@@ -90,13 +121,25 @@ export async function GET(req: NextRequest) {
     // =========================
     // Focus Summary
     // =========================
-
+    // const todayFocusLog = focusSessions.find(
+    //   (log) => log.createdAt.toDateString() === now.toDateString(),
+    // );
     const completedSessions = focusSessions.filter((s) => s.completed).length;
 
-    const totalFocusMinutes = focusSessions.reduce(
-      (sum, s) => sum + s.durationMins,
+    const todaysFocusSession = focusSessions.filter((log) => {
+      const logTime = log.createdAt.getTime();
+      return logTime >= todayStart.getTime() && logTime <= todayEnd.getTime();
+    });
+    // console.log("todaysFocusSession", todaysFocusSession);
+    const totalFocusMinutes = todaysFocusSession.reduce(
+      (sum, s) => sum + (s.durationMins || 0),
       0,
     );
+
+    const totalFocusToday = focusSessions.filter((log) => {
+      const logTime = log.createdAt.getTime();
+      return logTime >= todayStart.getTime() && logTime <= todayEnd.getTime();
+    });
 
     const avgSessionDuration = average(
       focusSessions.map((s) => s.durationMins),
@@ -139,6 +182,18 @@ export async function GET(req: NextRequest) {
       patterns.push(`Your energy levels were consistently low this week.`);
     }
 
+    if (todayEnergy >= 4) {
+      patterns.push(`You slept well today.`);
+    }
+
+    if (todayEnergy === 3) {
+      patterns.push(`You slept okay today.`);
+    }
+
+    if (todayEnergy <= 2) {
+      patterns.push(`You slept poorly today.`);
+    }
+
     // Meal insights
     if (mealLogs.length >= 21) {
       patterns.push(`You logged meals consistently throughout the week.`);
@@ -178,6 +233,7 @@ export async function GET(req: NextRequest) {
         `Your longest focus session lasted ${longestSession} minutes.`,
       );
     }
+    console.log(patterns);
 
     return NextResponse.json({
       weekStart: weekStart.toISOString(),
@@ -185,6 +241,10 @@ export async function GET(req: NextRequest) {
 
       sleep: {
         totalLogs: sleepLogs.length,
+
+        todayEnergyLevel: Number(todayEnergy.toFixed(1)),
+
+        todaySleepDur: todaySleepDur,
 
         avgSleepHours: Number(avgSleepHours.toFixed(1)),
 
@@ -196,17 +256,25 @@ export async function GET(req: NextRequest) {
       meals: {
         totalLogs: mealLogs.length,
 
+        todaysMeals: todayMeals.length,
+
         totalCalories,
 
         mealsByType,
 
         logs: mealLogs,
+
+        todayCalories: Number(todayCalories.toFixed(1)),
       },
 
       focus: {
         totalSessions: focusSessions.length,
 
         completedSessions,
+
+        todaySessions: totalFocusToday.length,
+
+        todaysFocusSession: todaysFocusSession,
 
         completionRate: Math.round(completionRate),
 

@@ -9,8 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
-// remove the direct import
-// import MealChart from "@/components/charts/MealChart";
+import { User } from "lucide-react";
 
 // add dynamic import alongside SleepChart and FocusChart
 const MealChart = dynamic(() => import("@/components/charts/MealChart"), {
@@ -73,6 +72,28 @@ export default function DashboardPage() {
             Logout
           </Button>
         </div>
+        <Card className="mb-6">
+          <CardContent className="pt-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">Current Streak</p>
+              <p className="text-3xl font-bold">
+                🔥 {summary?.user?.currentStreak ?? 0} days
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Longest: {summary?.user?.longestStreak ?? 0} days
+              </p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Status</p>
+              <p className="text-sm font-medium">
+                {summary?.user?.currentStreak > 0
+                  ? "On fire"
+                  : "Start your streak"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {isLoading ? (
           <div className="text-center text-muted-foreground py-20">
@@ -101,31 +122,28 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             )}
-
+            <h2>Today</h2>
             {/* Stats Grid */}
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <StatCard
-                label="Avg Bedtime Gap"
-                value={`${summary?.sleep?.avgBedGapMins ?? 0} min`}
-                sub={summary?.sleep?.avgBedGapMins > 0 ? "late" : "early"}
+                label="SLEEP"
+                value={`${summary?.sleep?.todaySleepDur ?? 0}h`}
+                sub={`Quality ${summary?.sleep?.todayEnergyLevel ?? 0}/5`}
               />
+
               <StatCard
-                label="Avg Sleep"
-                value={`${((summary?.sleep?.avgActualDurationMins ?? 0) / 60).toFixed(1)}h`}
-                sub="per night"
+                label="FOCUS"
+                value={`${summary?.focus?.totalFocusMinutes ?? 0}m`}
+                sub={`${summary?.focus?.todaySessions ?? 0} sessions`}
               />
+
               <StatCard
-                label="Focus Sessions"
-                value={`${summary?.focus?.completedSessions ?? 0}/${summary?.focus?.totalSessions ?? 0}`}
-                sub="completed"
-              />
-              <StatCard
-                label="Total Focus"
-                value={`${((summary?.focus?.totalFocusMinutes ?? 0) / 60).toFixed(1)}h`}
-                sub="this week"
+                label="MEALS"
+                value={`${summary?.meals?.todaysMeals ?? 0}`}
+                sub={`${summary?.meals?.todayCalories ?? 0}kcal`}
               />
             </div>
-
             {/* Charts */}
             {summary?.sleep?.logs?.length > 0 && (
               <Card className="mb-6">
@@ -137,7 +155,6 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             )}
-
             {summary?.focus?.sessions?.length > 0 && (
               <Card className="mb-6">
                 <CardHeader>
@@ -148,7 +165,6 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             )}
-
             {summary?.meals?.avgGapByType &&
               Object.keys(summary.meals.avgGapByType).length > 0 && (
                 <Card className="mb-6">
@@ -162,7 +178,6 @@ export default function DashboardPage() {
                   </CardContent>
                 </Card>
               )}
-
             {/* Quick Actions */}
             <div className="grid grid-cols-3 gap-4">
               <Button
@@ -196,6 +211,22 @@ export default function DashboardPage() {
     </main>
   );
 }
+
+const ENERGY_OPTIONS = [
+  { value: 1, emoji: "😴", label: "Exhausted" },
+  { value: 2, emoji: "😕", label: "Low" },
+  { value: 3, emoji: "😐", label: "Okay" },
+  { value: 4, emoji: "🙂", label: "Good" },
+  { value: 5, emoji: "🔥", label: "Energized" },
+];
+
+const avgEnergyLevel = {
+  1: "🌑",
+  2: "🌒",
+  3: "🌓",
+  4: "🌔",
+  5: "🌕",
+};
 
 function StatCard({
   label,

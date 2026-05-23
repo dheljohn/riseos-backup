@@ -147,7 +147,7 @@ export default function FocusPage() {
     }
     handleReset();
   }
-
+  const radius = 90;
   const totalSeconds = startMinsRef.current * 60;
   const progress = totalSeconds > 0 ? (secondsLeft / totalSeconds) * 100 : 100;
   const mins = Math.floor(secondsLeft / 60)
@@ -177,6 +177,24 @@ export default function FocusPage() {
         </div>
 
         {/* Focus Label Card */}
+        {/* <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-sm text-muted-foreground font-medium">
+              What are you focusing on?
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Input
+              placeholder="e.g. Coding, Reading, Deep Work..."
+              value={focusLabel}
+              onChange={(e) => setFocusLabel(e.target.value)}
+              disabled={timerState !== "idle"}
+              className="text-base"
+            />
+          </CardContent>
+        </Card> */}
+
+        {/* Timer Card */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-sm text-muted-foreground font-medium">
@@ -192,33 +210,36 @@ export default function FocusPage() {
               className="text-base"
             />
           </CardContent>
-        </Card>
-
-        {/* Timer Card */}
-        <Card className="mb-6">
           <CardContent className="pt-6 flex flex-col items-center gap-6">
             {/* Circle Timer */}
             <div className="relative flex items-center justify-center">
               <svg width="220" height="220" className="-rotate-90">
+                {/* Background ring */}
                 <circle
                   cx="110"
                   cy="110"
-                  r="90"
+                  r={radius}
                   fill="none"
-                  stroke="hsl(var(--muted))"
+                  // stroke="hsl(var(--muted))"
+                  stroke="red"
                   strokeWidth="10"
                 />
+
+                {/* Progress ring */}
                 <circle
                   cx="110"
                   cy="110"
-                  r="90"
+                  r={radius}
                   fill="none"
-                  stroke="hsl(var(--primary))"
+                  // stroke="hsl(var(--primary))"
+                  stroke="#3b82f6"
                   strokeWidth="10"
                   strokeLinecap="round"
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
-                  style={{ transition: "stroke-dashoffset 1s linear" }}
+                  // style={{
+                  //   transition: "stroke-dashoffset 0.35s linear",
+                  // }}
                 />
               </svg>
               <div className="absolute flex flex-col items-center">
@@ -271,7 +292,7 @@ export default function FocusPage() {
                 className="flex-1"
                 onClick={timerState !== "idle" ? handleAbandon : handleReset}
               >
-                {timerState !== "idle" ? "Abandon" : "Reset"}
+                {timerState !== "idle" ? "Reset" : "Reset"}
               </Button>
             </div>
           </CardContent>
