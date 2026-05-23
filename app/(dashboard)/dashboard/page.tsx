@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
-import { User } from "lucide-react";
 
 // add dynamic import alongside SleepChart and FocusChart
 const MealChart = dynamic(() => import("@/components/charts/MealChart"), {

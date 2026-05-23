@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthPayload, unauthorized } from "@/lib/auth";
+import { startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 export async function GET(req: NextRequest) {
   const auth = getAuthPayload(req);
@@ -8,17 +10,26 @@ export async function GET(req: NextRequest) {
 
   try {
     // Start of current week (Monday)
-    const now = new Date();
+    const timezone = req.nextUrl.searchParams.get("timezone") || "UTC";
 
-    const dayOfWeek = now.getDay();
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    // Current date in user's timezone
+    const now = toZonedTime(new Date(), timezone);
 
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - daysToMonday);
-    weekStart.setHours(0, 0, 0, 0);
+    // Today boundaries in user's timezone
+    const todayStart = fromZonedTime(startOfDay(now), timezone);
 
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 7);
+    const todayEnd = fromZonedTime(endOfDay(now), timezone);
+
+    // Week boundaries in user's timezone
+    const weekStart = fromZonedTime(
+      startOfWeek(now, { weekStartsOn: 1 }),
+      timezone,
+    );
+
+    const weekEnd = fromZonedTime(
+      endOfWeek(now, { weekStartsOn: 1 }),
+      timezone,
+    );
 
     // Fetch all logs
     const [sleepLogs, mealLogs, focusSessions] = await Promise.all([
@@ -61,18 +72,9 @@ export async function GET(req: NextRequest) {
         },
       }),
     ]);
-
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
     // =========================
     // Sleep Summary
     // =========================
-    const todayLog = sleepLogs.find(
-      (log) => log.createdAt.toDateString() === now.toDateString(),
-    );
     const todaySleepLog = sleepLogs.filter((log) => {
       const logTime = log.createdAt.getTime();
       return logTime >= todayStart.getTime() && logTime <= todayEnd.getTime();
