@@ -27,6 +27,10 @@ export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, user, clearAuth } = useAuthStore();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  console.log("Server timezone:", timezone);
+  console.log("Server date(local):", new Date());
+  console.log("Server date(UTC):", new Date().toUTCString());
+  console.log("Client date(local):", new Date().toLocaleString());
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -39,7 +43,6 @@ export default function DashboardPage() {
     queryKey: ["summary"],
     queryFn: async () => {
       const res = await api.get(`/summary?timezone=${timezone}`);
-
       return res.data;
     },
     enabled: isAuthenticated,
