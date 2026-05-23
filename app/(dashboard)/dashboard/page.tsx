@@ -26,6 +26,7 @@ const FocusChart = dynamic(() => import("@/components/charts/FocusChart"), {
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, user, clearAuth } = useAuthStore();
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function DashboardPage() {
   const { data: summary, isLoading } = useQuery({
     queryKey: ["summary"],
     queryFn: async () => {
-      const res = await api.get("/summary");
+      const res = await api.get(`/summary?timezone=${timezone}`);
 
       return res.data;
     },
