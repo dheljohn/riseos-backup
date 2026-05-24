@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthPayload, unauthorized } from "@/lib/auth";
+import { format } from "date-fns";
+import { updateUserStreak } from "@/lib/streak";
 
 export async function GET(req: NextRequest) {
   const auth = getAuthPayload(req);
@@ -27,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (!auth) return unauthorized();
 
   try {
-    const { label, durationMins, completed } = await req.json();
+    const { label, durationMins, completed, logDay } = await req.json();
 
     if (!label || durationMins == null) {
       return NextResponse.json(
@@ -39,11 +41,13 @@ export async function POST(req: NextRequest) {
     const session = await prisma.focusSession.create({
       data: {
         userId: auth.userId,
+        logDay: format(new Date(), "yyyy-MM-dd"),
         label,
         durationMins: Number(durationMins),
         completed: completed ?? false,
       },
     });
+    await updateUserStreak(auth.userId, logDay);
 
     return NextResponse.json(session, { status: 201 });
   } catch (error) {

@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { toast } from "sonner";
+import { DatePicker } from "@/components/date-picker";
+import { format } from "date-fns";
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
 
@@ -22,6 +24,9 @@ export default function MealsPage() {
   const { isAuthenticated } = useAuthStore();
 
   const queryClient = useQueryClient();
+
+  // const [logDay, setLogDay] = useState(new Date().toISOString().split("T")[0]);
+  const [logDay, setLogDay] = useState(format(new Date(), "yyyy-MM-dd"));
 
   const [form, setForm] = useState({
     mealType: "breakfast",
@@ -56,10 +61,13 @@ export default function MealsPage() {
       const res = await api.post("/meals", {
         mealType: data.mealType,
 
+        logDay: logDay,
+
         name: data.name,
 
         calories: data.calories ? Number(data.calories) : null,
       });
+      // console.log(logDay); //!
 
       return res.data;
     },
@@ -74,6 +82,7 @@ export default function MealsPage() {
       queryClient.invalidateQueries({
         queryKey: ["summary"],
       });
+      setLogDay(format(new Date(), "yyyy-MM-dd"));
 
       setForm({
         mealType: "breakfast",
@@ -159,6 +168,7 @@ export default function MealsPage() {
 
           <CardContent className="space-y-5">
             {/* Meal Type */}
+            <DatePicker value={logDay} onChange={setLogDay} />
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {MEAL_TYPES.map((type) => (
@@ -179,9 +189,7 @@ export default function MealsPage() {
                 </Button>
               ))}
             </div>
-
             {/* Meal Name */}
-
             <Input
               placeholder="What did you eat?"
               value={form.name}
@@ -193,9 +201,7 @@ export default function MealsPage() {
                 }))
               }
             />
-
             {/* Calories */}
-
             <Input
               type="number"
               placeholder="Calories (optional)"
@@ -208,7 +214,6 @@ export default function MealsPage() {
                 }))
               }
             />
-
             <Button
               className="w-full"
               onClick={handleSubmit}

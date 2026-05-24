@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { toast } from "sonner";
+import { DatePicker } from "@/components/date-picker";
+import { format } from "date-fns";
 
 const ENERGY_OPTIONS = [
   { value: 1, emoji: "😴", label: "Exhausted" },
@@ -22,6 +24,8 @@ const ENERGY_OPTIONS = [
 export default function SleepPage() {
   const router = useRouter();
 
+  // const today = new Date().toISOString().split("T")[0];
+
   const { isAuthenticated } = useAuthStore();
 
   const queryClient = useQueryClient();
@@ -29,6 +33,9 @@ export default function SleepPage() {
   const [durationHrs, setDurationHrs] = useState(8);
 
   const [energyLevel, setEnergyLevel] = useState(3);
+
+  // const [logDay, setLogDay] = useState(new Date().toISOString().split("T")[0]);
+  const [logDay, setLogDay] = useState(format(new Date(), "yyyy-MM-dd"));
 
   // =========================
   // Fetch Logs
@@ -54,8 +61,9 @@ export default function SleepPage() {
       const res = await api.post("/sleep", {
         durationHrs,
         energyLevel,
+        logDay,
       });
-
+      console.log("logDay:", logDay);
       return res.data;
     },
 
@@ -72,6 +80,7 @@ export default function SleepPage() {
 
       setDurationHrs(8);
       setEnergyLevel(3);
+      setLogDay(format(new Date(), "yyyy-MM-dd"));
     },
 
     onError: (err: any) => {
@@ -134,6 +143,15 @@ export default function SleepPage() {
           </CardHeader>
 
           <CardContent className="space-y-8">
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Log Date</span>
+
+              <DatePicker value={logDay} onChange={setLogDay} />
+
+              <p className="text-xs text-muted-foreground">
+                You can log sleep for past days
+              </p>
+            </div>
             {/* Sleep Duration */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
@@ -239,12 +257,7 @@ export default function SleepPage() {
                         </div>
 
                         <p className="text-xs text-muted-foreground">
-                          {new Date(log.createdAt).toLocaleDateString([], {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}{" "}
-                          •{" "}
+                          {log.logDay} •{" "}
                           {new Date(log.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",

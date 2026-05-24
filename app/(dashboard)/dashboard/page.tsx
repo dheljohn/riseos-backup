@@ -26,10 +26,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, user, clearAuth } = useAuthStore();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  console.log("Server timezone:", timezone);
-  console.log("Server date(local):", new Date());
-  console.log("Server date(UTC):", new Date().toUTCString());
-  console.log("Client date(local):", new Date().toLocaleString());
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -90,7 +86,7 @@ export default function DashboardPage() {
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Status</p>
               <p className="text-sm font-medium">
-                {summary?.user?.currentStreak > 0
+                {summary?.user?.currentStreak > 2
                   ? "On fire"
                   : "Start your streak"}
               </p>
@@ -132,13 +128,13 @@ export default function DashboardPage() {
               <StatCard
                 label="SLEEP"
                 value={`${summary?.sleep?.todaySleepDur ?? 0}h`}
-                sub={`Quality ${summary?.sleep?.todayEnergyLevel ?? 0}/5`}
+                sub={`Quality ${summary?.sleep?.todayAvgEnergy ?? 0}/5`}
               />
 
               <StatCard
                 label="FOCUS"
                 value={`${summary?.focus?.totalFocusMinutes ?? 0}m`}
-                sub={`${summary?.focus?.todaySessions ?? 0} sessions`}
+                sub={`${summary?.focus?.todaysSessions ?? 0} sessions`}
               />
 
               <StatCard
@@ -148,7 +144,7 @@ export default function DashboardPage() {
               />
             </div>
             {/* Charts */}
-            {summary?.sleep?.logs?.length > 0 && (
+            {/* {summary?.sleep?.logs?.length > 0 && (
               <Card className="mb-6">
                 <CardHeader>
                   <CardTitle className="text-base">Sleep Trends</CardTitle>
@@ -180,7 +176,7 @@ export default function DashboardPage() {
                     <MealChart data={summary.meals.avgGapByType} />
                   </CardContent>
                 </Card>
-              )}
+              )} */}
             {/* Quick Actions */}
             <div className="grid grid-cols-3 gap-4">
               <Button
@@ -222,14 +218,6 @@ const ENERGY_OPTIONS = [
   { value: 4, emoji: "🙂", label: "Good" },
   { value: 5, emoji: "🔥", label: "Energized" },
 ];
-
-const avgEnergyLevel = {
-  1: "🌑",
-  2: "🌒",
-  3: "🌓",
-  4: "🌔",
-  5: "🌕",
-};
 
 function StatCard({
   label,

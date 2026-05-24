@@ -12,21 +12,18 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const existing = await prisma.sleepLog.findUnique({
-      where: { id },
+    const deleted = await prisma.sleepLog.deleteMany({
+      where: {
+        id,
+        userId: auth.userId,
+      },
     });
 
-    if (!existing || existing.userId !== auth.userId) {
+    if (deleted.count === 0) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await prisma.sleepLog.delete({
-      where: { id },
-    });
-
-    return NextResponse.json({
-      message: "Deleted",
-    });
+    return NextResponse.json({ message: "Deleted" });
   } catch (error) {
     console.error("Sleep DELETE error:", error);
 

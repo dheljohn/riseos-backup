@@ -32,8 +32,11 @@ api.interceptors.response.use(
         );
         const newToken = res.data.accessToken;
         useAuthStore.getState().setAccessToken(newToken);
-        original.headers.Authorization = `Bearer ${newToken}`;
-        return axios(original);
+        original.headers = {
+          ...original.headers,
+          Authorization: `Bearer ${newToken}`,
+        };
+        return api(original);
       } catch {
         useAuthStore.getState().clearAuth();
         window.location.href = "/login";

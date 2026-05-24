@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthPayload, unauthorized } from "@/lib/auth";
+import { format } from "date-fns";
+import { updateUserStreak } from "@/lib/streak";
 
 export async function GET(req: NextRequest) {
   const auth = getAuthPayload(req);
@@ -20,27 +22,30 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const auth = getAuthPayload(req);
+
   if (!auth) return unauthorized();
 
   try {
-    const { durationHrs, energyLevel } = await req.json();
-
+    const { durationHrs, energyLevel, logDay: inputLogDay } = await req.json();
     if (!durationHrs || !energyLevel) {
       return NextResponse.json(
         { error: "durationHrs and energyLevel are required" },
         { status: 400 },
       );
     }
+    const logDay = inputLogDay ?? format(new Date(), "yyyy-MM-dd");
 
-    const log = await prisma.sleepLog.create({
+    const sleeplog = await prisma.sleepLog.create({
       data: {
         userId: auth.userId,
+        logDay,
         durationHrs: Number(durationHrs),
         energyLevel: Number(energyLevel),
       },
     });
+    await updateUserStreak(auth.userId, logDay);
 
-    return NextResponse.json(log, { status: 201 });
+    return NextResponse.json(sleeplog, { status: 201 });
   } catch (error) {
     console.error("Sleep POST error:", error);
 

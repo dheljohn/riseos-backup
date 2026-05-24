@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthPayload, unauthorized } from "@/lib/auth";
+import { format } from "date-fns";
+import { updateUserStreak } from "@/lib/streak";
 
 // =========================
 // GET Meals
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
   if (!auth) return unauthorized();
 
   try {
-    const { mealType, name, calories } = await req.json();
+    const { mealType, name, calories, logDay: inputLogDay } = await req.json();
 
     if (!mealType || !name) {
       return NextResponse.json(
@@ -60,6 +62,7 @@ export async function POST(req: NextRequest) {
         },
       );
     }
+    const logDay = inputLogDay ?? format(new Date(), "yyyy-MM-dd");
 
     const meal = await prisma.mealLog.create({
       data: {
@@ -67,11 +70,14 @@ export async function POST(req: NextRequest) {
 
         mealType,
 
+        logDay,
+
         name,
 
         calories: calories != null ? Number(calories) : null,
       },
     });
+    await updateUserStreak(auth.userId, logDay);
 
     return NextResponse.json(meal, {
       status: 201,

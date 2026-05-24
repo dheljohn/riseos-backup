@@ -4,6 +4,11 @@ interface User {
   id: string;
   name: string;
   email: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface AuthState {
