@@ -64,10 +64,34 @@ export async function POST(req: NextRequest) {
       process.env.JWT_SECRET!,
       { expiresIn: "15m" },
     );
+    const newRefreshToken = jwt.sign(
+      { userId: payload.userId },
+      process.env.JWT_REFRESH_SECRET!,
+      { expiresIn: "7d" },
+    );
+
+    await prisma.refreshToken.delete({ where: { token } });
+    await prisma.refreshToken.create({
+      data: {
+        token: newRefreshToken,
+        userId: payload.userId,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
 
     return NextResponse.json({
       accessToken,
-      userId: payload.userId,
+      refreshToken: newRefreshToken, // ← send new refresh token
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        currentStreak: user.currentStreak,
+        longestStreak: user.longestStreak,
+        lastActiveDate: user.lastActiveDate?.toISOString() ?? null,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
     });
   } catch (error) {
     console.error("Refresh error:", error);
