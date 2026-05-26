@@ -16,9 +16,6 @@ export async function GET(req: NextRequest) {
     const now = toZonedTime(new Date(), timezone);
 
     // Today boundaries in user's timezone
-    const todayStart = fromZonedTime(startOfDay(now), timezone);
-
-    const todayEnd = fromZonedTime(endOfDay(now), timezone);
     const todayLogDay = format(toZonedTime(new Date(), timezone), "yyyy-MM-dd");
     // Week boundaries in user's timezone
     const weekStart = fromZonedTime(
@@ -41,6 +38,7 @@ export async function GET(req: NextRequest) {
           currentStreak: true,
           longestStreak: true,
           lastActiveDate: true,
+          name: true,
         },
       }),
       prisma.sleepLog.findMany({
@@ -337,6 +335,7 @@ export async function GET(req: NextRequest) {
       user: {
         currentStreak: user?.currentStreak ?? 0,
         longestStreak: user?.longestStreak ?? 0,
+        name: user?.name ?? "User",
       },
 
       sleep: {
