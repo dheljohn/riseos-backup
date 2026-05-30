@@ -1,39 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthPayload, unauthorized } from "@/lib/auth";
-import { format } from "date-fns";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { updateUserStreak } from "@/lib/streak";
+import { toZonedTime } from "date-fns-tz";
 
 // =========================
-// GET Meals
+// GET Meals (weekly)
 // =========================
 
 export async function GET(req: NextRequest) {
   const auth = getAuthPayload(req);
-
   if (!auth) return unauthorized();
 
-  // Today's range
-  const today = new Date();
+  const timezone = req.nextUrl.searchParams.get("timezone") || "UTC";
 
-  today.setHours(0, 0, 0, 0);
+  const now = toZonedTime(new Date(), timezone);
 
-  const tomorrow = new Date(today);
-
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
   const meals = await prisma.mealLog.findMany({
     where: {
       userId: auth.userId,
-
-      createdAt: {
-        gte: today,
-        lt: tomorrow,
+      logDay: {
+        gte: startOfDay(weekStart),
+        lte: endOfDay(weekEnd),
       },
     },
-
     orderBy: {
-      createdAt: "desc",
+      logDay: "desc",
     },
   });
 
@@ -46,7 +42,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const auth = getAuthPayload(req);
-
   if (!auth) return unauthorized();
 
   try {
@@ -54,44 +49,35 @@ export async function POST(req: NextRequest) {
 
     if (!mealType || !name) {
       return NextResponse.json(
-        {
-          error: "mealType and Mealname are required",
-        },
-        {
-          status: 400,
-        },
+        { error: "mealType and name are required" },
+        { status: 400 },
       );
     }
-    const logDay = inputLogDay ?? format(new Date(), "yyyy-MM-dd");
+
+    // Normalize logDay exactly like SleepLog
+    const logDay = inputLogDay
+      ? startOfDay(new Date(inputLogDay))
+      : startOfDay(new Date());
 
     const meal = await prisma.mealLog.create({
       data: {
         userId: auth.userId,
-
         mealType,
-
-        logDay,
-
         name,
-
+        logDay,
         calories: calories != null ? Number(calories) : null,
       },
     });
+
     await updateUserStreak(auth.userId, logDay);
 
-    return NextResponse.json(meal, {
-      status: 201,
-    });
+    return NextResponse.json(meal, { status: 201 });
   } catch (error) {
     console.error("Meal POST error:", error);
 
     return NextResponse.json(
-      {
-        error: "Internal server error",
-      },
-      {
-        status: 500,
-      },
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

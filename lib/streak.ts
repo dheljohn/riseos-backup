@@ -1,16 +1,17 @@
 import prisma from "@/lib/prisma";
-import { differenceInCalendarDays } from "date-fns";
+import { differenceInCalendarDays, startOfDay } from "date-fns";
 
-export async function updateUserStreak(userId: string, logDay: string) {
+export async function updateUserStreak(userId: string, logDay: Date | string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });
 
   if (!user) return;
 
-  const today = new Date(logDay);
+  // Normalize incoming logDay (NOW DATE TIME SAFE)
+  const today = startOfDay(new Date(logDay));
 
-  // First ever log
+  // First log ever
   if (!user.lastActiveDate) {
     await prisma.user.update({
       where: { id: userId },
@@ -20,20 +21,17 @@ export async function updateUserStreak(userId: string, logDay: string) {
         lastActiveDate: today,
       },
     });
-
     return;
   }
 
-  const lastDate = new Date(user.lastActiveDate);
+  const lastDate = startOfDay(new Date(user.lastActiveDate));
 
   const diff = differenceInCalendarDays(today, lastDate);
 
-  // Already counted today
-  if (diff === 0) {
-    return;
-  }
+  // Same day → do nothing
+  if (diff === 0) return;
 
-  // Consecutive day
+  // Consecutive day → increment streak
   if (diff === 1) {
     const newStreak = user.currentStreak + 1;
 
@@ -49,7 +47,7 @@ export async function updateUserStreak(userId: string, logDay: string) {
     return;
   }
 
-  // Missed day(s)
+  // Missed days → reset streak
   if (diff > 1) {
     await prisma.user.update({
       where: { id: userId },

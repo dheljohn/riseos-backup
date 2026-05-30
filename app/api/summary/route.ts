@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthPayload, unauthorized } from "@/lib/auth";
-import { startOfWeek, endOfWeek, startOfDay, endOfDay, format } from "date-fns";
+import {
+  startOfWeek,
+  endOfWeek,
+  startOfDay,
+  endOfDay,
+  format,
+  isSameDay,
+} from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 export async function GET(req: NextRequest) {
@@ -16,17 +23,14 @@ export async function GET(req: NextRequest) {
     const now = toZonedTime(new Date(), timezone);
 
     // Today boundaries in user's timezone
-    const todayLogDay = format(toZonedTime(new Date(), timezone), "yyyy-MM-dd");
-    // Week boundaries in user's timezone
-    const weekStart = fromZonedTime(
+    // const todayLogDay = format(toZonedTime(new Date(), timezone), "yyyy-MM-dd");
+    const isToday = (date: Date) => isSameDay(date, new Date());
+    const weekStart = toZonedTime(
       startOfWeek(now, { weekStartsOn: 1 }),
       timezone,
     );
 
-    const weekEnd = fromZonedTime(
-      endOfWeek(now, { weekStartsOn: 1 }),
-      timezone,
-    );
+    const weekEnd = toZonedTime(endOfWeek(now, { weekStartsOn: 1 }), timezone);
 
     // Fetch all logs
     const [user, sleepLogs, mealLogs, focusSessions] = await Promise.all([
@@ -44,39 +48,39 @@ export async function GET(req: NextRequest) {
       prisma.sleepLog.findMany({
         where: {
           userId: auth.userId,
-          createdAt: {
+          logDay: {
             gte: weekStart,
             lt: weekEnd,
           },
         },
         orderBy: {
-          createdAt: "asc",
+          logDay: "desc",
         },
       }),
 
       prisma.mealLog.findMany({
         where: {
           userId: auth.userId,
-          createdAt: {
+          logDay: {
             gte: weekStart,
             lt: weekEnd,
           },
         },
         orderBy: {
-          createdAt: "asc",
+          logDay: "desc",
         },
       }),
 
       prisma.focusSession.findMany({
         where: {
           userId: auth.userId,
-          createdAt: {
+          logDay: {
             gte: weekStart,
             lt: weekEnd,
           },
         },
         orderBy: {
-          createdAt: "asc",
+          logDay: "desc",
         },
       }),
     ]);
@@ -88,7 +92,7 @@ export async function GET(req: NextRequest) {
     // =========================
     // Sleep Summary
     // =========================
-    const todaySleepLog = sleepLogs.filter((log) => log.logDay === todayLogDay);
+    const todaySleepLog = sleepLogs.filter((log) => isToday(log.logDay));
 
     const todaySleepDur =
       todaySleepLog.reduce((sum, log) => sum + log.durationHrs, 0) ?? 0;
@@ -96,9 +100,12 @@ export async function GET(req: NextRequest) {
     const todayEnergy =
       todaySleepLog.reduce((sum, log) => sum + log.energyLevel, 0) ?? 0;
 
+    // if multiple sleep
     const todayAvgEnergy =
-      todaySleepLog.reduce((sum, log) => sum + log.energyLevel, 0) /
-      todaySleepLog.length;
+      todaySleepLog.length > 0
+        ? todaySleepLog.reduce((sum, log) => sum + log.energyLevel, 0) /
+          todaySleepLog.length
+        : 0;
 
     const avgSleepHours = average(sleepLogs.map((log) => log.durationHrs));
 
@@ -113,10 +120,12 @@ export async function GET(req: NextRequest) {
       0,
     );
 
-    const todayMeals = mealLogs.filter((log) => log.logDay === todayLogDay);
-    const todayCalories = mealLogs
-      .filter((log) => log.logDay === todayLogDay)
-      .reduce((sum, meal) => sum + (meal.calories ?? 0), 0);
+    const todayMeals = mealLogs.filter((log) => isToday(log.logDay));
+
+    const todayCalories = todayMeals.reduce(
+      (sum, meal) => sum + (meal.calories ?? 0),
+      0,
+    );
 
     const mealsByType = mealLogs.reduce(
       (acc, meal) => {
@@ -129,23 +138,19 @@ export async function GET(req: NextRequest) {
     // =========================
     // Focus Summary
     // =========================
-    // const todayFocusLog = focusSessions.find(
-    //   (log) => log.createdAt.toDateString() === now.toDateString(),
-    // );
+
     const completedSessions = focusSessions.filter((s) => s.completed).length;
 
-    const todaysFocusSession = focusSessions.filter(
-      (log) => log.logDay === todayLogDay,
+    const todayFocusSession = focusSessions.filter((log) =>
+      isToday(log.logDay),
     );
-    // console.log("todaysFocusSession", todaysFocusSession);
-    const totalFocusMinutes = todaysFocusSession.reduce(
+
+    const totalFocusMinutes = todayFocusSession.reduce(
       (sum, s) => sum + (s.durationMins || 0),
       0,
     );
 
-    const totalFocusToday = focusSessions.filter(
-      (log) => log.logDay === todayLogDay,
-    );
+    const totalFocusToday = todayFocusSession.length;
 
     const avgSessionDuration = average(
       focusSessions.map((s) => s.durationMins),
@@ -371,23 +376,14 @@ export async function GET(req: NextRequest) {
       focus: {
         totalSessions: focusSessions.length,
 
-        todaysSessions: totalFocusToday.length,
+        todaySessions: todayFocusSession.length,
+        todayFocusSessions: todayFocusSession,
 
         completedSessions,
-
-        todaySessions: totalFocusToday.length,
-
-        todaysFocusSession: todaysFocusSession,
 
         completionRate: Math.round(completionRate),
 
         totalFocusMinutes,
-
-        avgSessionDurationMins: Math.round(avgSessionDuration),
-
-        longestSessionMins: longestSession,
-
-        sessions: focusSessions,
       },
 
       patterns,

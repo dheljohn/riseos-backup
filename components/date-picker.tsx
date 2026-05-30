@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format, isToday, isYesterday } from "date-fns";
+import { format, isSameDay, subDays } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -21,12 +21,11 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
   const [open, setOpen] = useState(false);
 
   const formatDisplay = (date: Date) => {
-    if (isToday(date)) return "Today";
-    if (isYesterday(date)) return "Yesterday";
+    if (isSameDay(date, new Date())) return "Today";
+    if (isSameDay(date, subDays(new Date(), 1))) return "Yesterday";
     return format(date, "MMM d, yyyy");
   };
-
-  const selected = value ? new Date(value + "T00:00:00") : undefined;
+  const selected = value ? new Date(`${value}T12:00:00`) : undefined;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

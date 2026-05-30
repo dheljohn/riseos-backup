@@ -36,10 +36,15 @@ model SleepLog {
   id           String   @id @default(cuid())
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  durationHrs  Float     // from slider, e.g. 7.5
-  energyLevel  Int      // 1-5
-  logDay       String   // "YYYY-MM-DD"
+
+  durationHrs  Float
+  energyLevel  Int
+
+  logDay       DateTime
+
   createdAt    DateTime @default(now())
+
+  @@index([userId, logDay])
 }
 
 model MealLog {
@@ -49,8 +54,9 @@ model MealLog {
   mealType  String   // breakfast, lunch, dinner, snack
   name      String   // what they ate
   calories  Int?     // optional
-  logDay       String   // "YYYY-MM-DD"
   createdAt DateTime @default(now())
+  logDay    DateTime
+  @@index([userId, logDay])
 } 
 
 model FocusSession {
@@ -59,7 +65,8 @@ model FocusSession {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   label        String   // the focus note / goal
   durationMins Int      // planned timer duration
-  completed    Boolean  @default(false)
-  logDay       String   // "YYYY-MM-DD"
   createdAt    DateTime @default(now())
+  completed    Boolean  @default(false)
+  logDay       DateTime
+  @@index([userId, logDay])
 }
