@@ -47,15 +47,13 @@ export async function POST(request: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const [user] = await prisma.$transaction([
-      prisma.user.create({
-        data: {
-          name,
-          email: normalizedEmail,
-          password: hashedPassword,
-        },
-      }),
-    ]);
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email: normalizedEmail,
+        password: hashedPassword,
+      },
+    });
     // Generate tokens
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
@@ -73,7 +71,16 @@ export async function POST(request: Request) {
       {
         accessToken,
         refreshToken,
-        user: { id: user.id, name: user.name, email: user.email },
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          currentStreak: user.currentStreak,
+          longestStreak: user.longestStreak,
+          lastActiveDate: user.lastActiveDate?.toISOString() ?? null,
+          createdAt: user.createdAt.toISOString(),
+          updatedAt: user.updatedAt.toISOString(),
+        },
       },
       { status: 201 },
     );

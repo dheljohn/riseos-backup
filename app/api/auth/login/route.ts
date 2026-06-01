@@ -70,6 +70,11 @@ export async function POST(req: NextRequest) {
           id: user.id,
           name: user.name,
           email: user.email,
+          currentStreak: user.currentStreak,
+          longestStreak: user.longestStreak,
+          lastActiveDate: user.lastActiveDate?.toISOString() ?? null,
+          createdAt: user.createdAt.toISOString(),
+          updatedAt: user.updatedAt.toISOString(),
         },
       },
       {
