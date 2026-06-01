@@ -8,6 +8,7 @@ import {
   endOfDay,
   format,
   isSameDay,
+  subDays,
 } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
@@ -21,6 +22,8 @@ export async function GET(req: NextRequest) {
 
     // Current date in user's timezone
     const now = toZonedTime(new Date(), timezone);
+
+    const sevenDaysAgo = subDays(now, 6);
 
     // Today boundaries in user's timezone
     // const todayLogDay = format(toZonedTime(new Date(), timezone), "yyyy-MM-dd");
@@ -49,8 +52,8 @@ export async function GET(req: NextRequest) {
         where: {
           userId: auth.userId,
           logDay: {
-            gte: weekStart,
-            lt: weekEnd,
+            gte: startOfDay(sevenDaysAgo),
+            lt: endOfDay(now),
           },
         },
         orderBy: {
@@ -62,8 +65,8 @@ export async function GET(req: NextRequest) {
         where: {
           userId: auth.userId,
           logDay: {
-            gte: weekStart,
-            lt: weekEnd,
+            gte: startOfDay(sevenDaysAgo),
+            lt: endOfDay(now),
           },
         },
         orderBy: {
@@ -75,8 +78,8 @@ export async function GET(req: NextRequest) {
         where: {
           userId: auth.userId,
           logDay: {
-            gte: weekStart,
-            lt: weekEnd,
+            gte: startOfDay(sevenDaysAgo),
+            lt: endOfDay(now),
           },
         },
         orderBy: {

@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthPayload, unauthorized } from "@/lib/auth";
-import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
+import {
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  subDays,
+} from "date-fns";
 import { updateUserStreak } from "@/lib/streak";
 import { toZonedTime } from "date-fns-tz";
 
@@ -17,15 +23,17 @@ export async function GET(req: NextRequest) {
 
   const now = toZonedTime(new Date(), timezone);
 
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+  const sevenDaysAgo = subDays(now, 6);
+
+  // const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  // const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
   const meals = await prisma.mealLog.findMany({
     where: {
       userId: auth.userId,
       logDay: {
-        gte: startOfDay(weekStart),
-        lte: endOfDay(weekEnd),
+        gte: startOfDay(sevenDaysAgo),
+        lte: endOfDay(now),
       },
     },
     orderBy: {
