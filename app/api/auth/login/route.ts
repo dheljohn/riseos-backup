@@ -5,13 +5,14 @@ import prisma from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
   const { allowed, retryAfter } = rateLimit(ip, 10, 60 * 1000); // 10 requests/min
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
   try {
     const { email, password } = await req.json();
+    const normalizedEmail = email.toLowerCase().trim();
 
     // Validate input
     if (!email || !password) {
@@ -22,7 +23,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Find user
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
     if (!user) {
       return NextResponse.json(
         { error: "Invalid credentials" },
@@ -62,6 +65,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         accessToken,
+        refreshToken,
         user: {
           id: user.id,
           name: user.name,
@@ -70,9 +74,9 @@ export async function POST(req: NextRequest) {
       },
       {
         status: 200,
-        headers: {
-          "Set-Cookie": `refreshToken=${refreshToken}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Strict; Secure`,
-        },
+        // headers: {
+        //   "Set-Cookie": `refreshToken=${refreshToken}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Strict; Secure`,
+        // },
       },
     );
   } catch (error) {

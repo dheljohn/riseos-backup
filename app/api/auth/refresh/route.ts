@@ -6,11 +6,11 @@ import { rateLimit } from "@/lib/rateLimit";
 function clearAuthAnd401(message: string) {
   const res = NextResponse.json({ error: message }, { status: 401 });
 
-  res.cookies.set("refreshToken", "", {
-    httpOnly: true,
-    path: "/",
-    maxAge: 0,
-  });
+  // res.cookies.set("refreshToken", "", {
+  //   httpOnly: true,
+  //   path: "/",
+  //   maxAge: 0,
+  // });
 
   return res;
 }
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       return clearAuthAnd401("User not found");
     }
 
-    const stored = await prisma.refreshToken.findUnique({
+    const stored = await prisma.refreshToken.findFirst({
       where: { token },
     });
 
@@ -70,14 +70,18 @@ export async function POST(req: NextRequest) {
       { expiresIn: "7d" },
     );
 
-    await prisma.refreshToken.delete({ where: { token } });
-    await prisma.refreshToken.create({
-      data: {
-        token: newRefreshToken,
-        userId: payload.userId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
+    await prisma.$transaction([
+      prisma.refreshToken.deleteMany({
+        where: { token },
+      }),
+      prisma.refreshToken.create({
+        data: {
+          token: newRefreshToken,
+          userId: payload.userId,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       accessToken,

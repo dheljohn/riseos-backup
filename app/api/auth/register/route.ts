@@ -18,14 +18,26 @@ export async function POST(request: Request) {
   try {
     const { name, email, password } = await request.json();
 
+    const normalizedEmail = String(email).toLowerCase().trim();
+
     if (!name || !email || !password) {
       return NextResponse.json(
         { error: "Name, email and password are required" },
         { status: 400 },
       );
     }
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password too weak" }, { status: 400 });
+    }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+    }
+
+    const existing = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
     if (existing) {
       return NextResponse.json(
         { error: "Email already registered" },
@@ -35,10 +47,15 @@ export async function POST(request: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const user = await prisma.user.create({
-      data: { name, email, password: hashedPassword },
-    });
-
+    const [user] = await prisma.$transaction([
+      prisma.user.create({
+        data: {
+          name,
+          email: normalizedEmail,
+          password: hashedPassword,
+        },
+      }),
+    ]);
     // Generate tokens
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
