@@ -70,6 +70,9 @@ export async function POST(req: NextRequest) {
       { expiresIn: "7d" },
     );
 
+    console.log("Old token expiry:", jwt.decode(token));
+    console.log("New token expiry:", jwt.decode(newRefreshToken));
+
     await prisma.$transaction([
       prisma.refreshToken.deleteMany({
         where: { token },
