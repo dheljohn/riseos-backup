@@ -50,11 +50,12 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return clearAuthAnd401("User not found");
     }
-
+    console.log("Looking for token:", token.substring(0, 20) + "..."); //!
     const stored = await prisma.refreshToken.findFirst({
       where: { token },
     });
-
+    console.log("Found in DB:", !!stored); //!
+    console.log("Total tokens in DB:", await prisma.refreshToken.count()); //!
     if (!stored || stored.expiresAt < new Date()) {
       return clearAuthAnd401("Refresh token expired or revoked");
     }
