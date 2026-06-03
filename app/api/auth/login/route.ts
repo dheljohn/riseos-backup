@@ -60,7 +60,10 @@ export async function POST(req: NextRequest) {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
-
+    const verify = await prisma.refreshToken.findFirst({
+      where: { token: refreshToken },
+    });
+    console.log("Token saved and verified in DB:", !!verify);
     // Return tokens
     return NextResponse.json(
       {
