@@ -139,7 +139,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const token = req.cookies.get("refreshToken")?.value ?? body.refreshToken;
+    const token = body.refreshToken ?? req.cookies.get("refreshToken")?.value;
+
+    console.log("Token from request — length:", token.length);
+    console.log("Token last 10:", token.slice(-10));
 
     if (!token) {
       return clearAuthAnd401("No refresh token");

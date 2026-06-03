@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
+    console.log("Token stored — length:", refreshToken.length);
+    console.log("Token last 10:", refreshToken.slice(-10));
     const verify = await prisma.refreshToken.findFirst({
       where: { token: refreshToken },
     });
