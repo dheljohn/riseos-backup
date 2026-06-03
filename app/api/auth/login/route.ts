@@ -12,7 +12,6 @@ export async function POST(req: NextRequest) {
   }
   try {
     const { email, password } = await req.json();
-    const normalizedEmail = email.toLowerCase().trim();
 
     // Validate input
     if (!email || !password) {
@@ -21,6 +20,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    const normalizedEmail = email.toLowerCase().trim();
 
     // Find user
     const user = await prisma.user.findUnique({
@@ -82,9 +82,9 @@ export async function POST(req: NextRequest) {
       },
       {
         status: 200,
-        headers: {
-          "Set-Cookie": `refreshToken=${refreshToken}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Strict; Secure`,
-        },
+        // headers: {
+        //   "Set-Cookie": `refreshToken=${refreshToken}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Strict; Secure`,
+        // },
       },
     );
   } catch (error) {
