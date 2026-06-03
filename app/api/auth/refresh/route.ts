@@ -56,6 +56,13 @@ export async function POST(req: NextRequest) {
     });
     console.log("Found in DB:", !!stored); //!
     console.log("Total tokens in DB:", await prisma.refreshToken.count()); //!
+    console.log(
+      "All tokens for user:",
+      await prisma.refreshToken.findMany({
+        where: { userId: payload.userId },
+        select: { token: true, expiresAt: true, createdAt: true },
+      }),
+    ); //!
     if (!stored || stored.expiresAt < new Date()) {
       return clearAuthAnd401("Refresh token expired or revoked");
     }
