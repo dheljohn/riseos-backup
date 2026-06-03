@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider        = "prisma-client-js"
+  output          = "../app/generated/prisma"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -61,7 +62,7 @@ model MealLog {
 
 model FocusSession {
   id           String   @id @default(cuid())
-  userId       String
+  userId       String 
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   label        String   // the focus note / goal
   durationMins Int      // planned timer duration
