@@ -79,9 +79,9 @@ export async function POST(req: NextRequest) {
       },
       {
         status: 200,
-        // headers: {
-        //   "Set-Cookie": `refreshToken=${refreshToken}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Strict; Secure`,
-        // },
+        headers: {
+          "Set-Cookie": `refreshToken=${refreshToken}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Strict; Secure`,
+        },
       },
     );
   } catch (error) {
