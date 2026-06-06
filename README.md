@@ -221,7 +221,7 @@ All auth endpoints are rate-limited to **10 requests per minute per IP** using a
 | Repo | Description |
 |---|---|
 | `riseos-backup` (this repo) | Next.js backend API, deployed on Vercel |
-| _(mobile repo)_ | React Native + Expo mobile client |
+| [riseos-mobile](https://github.com/dheljohn/riseos-mobile)  | React Native + Expo mobile client |
 
 ---
 
