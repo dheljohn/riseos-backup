@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
+import { z } from "zod";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
@@ -11,15 +12,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
   try {
-    const { email, password } = await req.json();
+    const loginSchema = z.object({
+      email: z.email(),
+      password: z.string().min(8),
+    });
 
     // Validate input
-    if (!email || !password) {
+    const parsed = loginSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { error: parsed.error.issues.map((i) => i.message).join(", ") },
         { status: 400 },
       );
     }
+
+    const { email, password } = parsed.data;
+
     const normalizedEmail = email.toLowerCase().trim();
 
     // Find user
@@ -60,12 +68,10 @@ export async function POST(req: NextRequest) {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
-    console.log("Token stored — length:", refreshToken.length);
-    console.log("Token last 10:", refreshToken.slice(-10));
     const verify = await prisma.refreshToken.findFirst({
       where: { token: refreshToken },
     });
-    console.log("Token saved and verified in DB:", !!verify);
+
     // Return tokens
     return NextResponse.json(
       {
@@ -90,7 +96,6 @@ export async function POST(req: NextRequest) {
       },
     );
   } catch (error) {
-    console.error("Login error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
