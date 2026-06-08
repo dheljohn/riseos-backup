@@ -55,7 +55,7 @@ JWT_REFRESH_SECRET=""
 | `JWT_SECRET` | Secret for signing access tokens |
 | `JWT_REFRESH_SECRET` | Secret for signing refresh tokens |
 
-> ⚠️ Never commit `.env` to version control. Add it to `.gitignore`.
+> Keep .env safe. Add it to `.gitignore`.
 
 ---
 
