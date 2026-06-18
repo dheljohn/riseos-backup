@@ -211,13 +211,12 @@ FocusSession  — label, durationMins, completed, logDay
 
 ## Rate Limiting
 
-All auth endpoints are rate-limited to **10 requests per minute per IP** using an in-memory sliding window. This resets on server restart and does not persist across Vercel function instances — suitable for development and low-traffic deployments. Replace with a Redis-backed solution (e.g., Upstash) for production scale.
+Auth routes are protected by a simple in-memory sliding window rate limiter (10 requests/minute per IP). Because the state is stored in memory, limits are instance-local and reset whenever a serverless function is recreated. For a production environment, a distributed solution backed by Redis should be used instead.
 
 ---
 
 ## Related Repos
 
-<!-- Add links to the React Native / Expo mobile client repo here -->
 | Repo | Description |
 |---|---|
 | `riseos-backup` (this repo) | Next.js backend API, deployed on Vercel |
